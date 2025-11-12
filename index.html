@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Network Performance Test (ndt7)</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <h1>Network Performance Test (ndt7)</h1>
+
+    <div id="controls">
+      <button id="startBtn">Start Test</button>
+      <button id="stopBtn" disabled>Stop</button>
+    </div>
+
+    <section id="serverSection" class="card">
+      <h2>Server</h2>
+      <div id="server">Not selected</div>
+    </section>
+
+    <section id="results" class="grid">
+      <div class="card">
+        <h3>Download</h3>
+        <div id="download">—</div>
+      </div>
+      <div class="card">
+        <h3>Upload</h3>
+        <div id="upload">—</div>
+      </div>
+      <div class="card">
+        <h3>Latency</h3>
+        <div id="latency">—</div>
+      </div>
+      <div class="card">
+        <h3>Status / Log</h3>
+        <pre id="log" class="log">Idle</pre>
+      </div>
+    </section>
+
+    <p class="note">This page uses M-Lab's ndt7 client via CDN. You must accept the on-page prompt to run the test (the library may ask for acceptance of the data policy).</p>
+
+    <footer>
+      <small>Built with ndt7-js (M-Lab). Source: <a href="https://github.com/m-lab/ndt7-js" target="_blank" rel="noopener">m-lab/ndt7-js</a></small>
+    </footer>
+  </main>
+
+  <!-- ndt7 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@m-lab/ndt7/dist/ndt7.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
