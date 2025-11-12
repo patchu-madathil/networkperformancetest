@@ -1,35 +1,104 @@
 ```markdown
 # networkperformancetest
 
-Simple static web page that runs M-Lab's ndt7 upload and download speed tests from the browser and reports throughput and latency.
+Simple static site that runs M-Lab's ndt7 upload and download speed tests from the browser and reports throughput and latency.
 
-How it works
-- Uses the ndt7 client from CDN: `https://cdn.jsdelivr.net/npm/@m-lab/ndt7/dist/ndt7.min.js`
-- The page calls `ndt7.test(...)` and listens for download and upload measurement callbacks to show Mbps and latency (when present).
+This repository is published via GitHub Pages (static site). The app uses a local ndt7 bundle and jQuery to ensure reliable operation on GitHub Pages without depending on third-party CDNs at runtime.
 
-Publish to GitHub Pages
-1. Create a repository named `networkperformancetest` under your GitHub account `patchu-madathil`.
-2. Push these files to the repo's main branch.
-3. In the repository Settings → Pages, set the source to `main` branch and folder `/ (root)`.
-4. After a minute, your site will be available at:
-   `https://patchu-madathil.github.io/networkperformancetest/`
+---
 
-Quick git commands (run from the folder with the files):
-- git init
-- git add .
-- git commit -m "Initial networkperformancetest site (ndt7)"
-- git branch -M main
-- git remote add origin https://github.com/patchu-madathil/networkperformancetest.git
-- git push -u origin main
+## Current repository structure
 
-Optional: automatic deploy to gh-pages using GitHub Actions
-- I included a workflow that will publish the repository contents to the gh-pages branch on push to main.
-- If you prefer Pages from the gh-pages branch, set Pages to serve from `gh-pages` branch in repository settings (the workflow will create that branch when it runs).
+- index.html         — Main page (loads jquery.min.js, ndt7.min.js, then script.js)
+- style.css          — Page styles
+- script.js          — App logic: runs ndt7 tests and updates the UI
+- ndt7.min.js        — Local ndt7 JS bundle (local copy included)
+- jquery.min.js      — Local jQuery (local copy included)
+- README.md          — This file
+- .nojekyll          — Prevents GitHub Pages from using Jekyll
+- .github/workflows/deploy.yml — (optional) GitHub Actions workflow to publish to gh-pages
 
-Notes and troubleshooting
-- Some browsers or networks can block WebSocket connections or cross-origin connections required by ndt7; if tests fail, try another browser or network.
-- The library may show a small consent dialog; the code sets `userAcceptedDataPolicy: true` to minimize prompts.
-- Latency fields vary by server; the script tries multiple common fields and will show "N/A" if none are present.
+> Note: Filenames and paths are case-sensitive. index.html expects the local bundles at the repository root:
+> - `jquery.min.js`
+> - `ndt7.min.js`
+> If you placed these files in a subfolder, update the <script> src attributes in index.html accordingly.
 
-License: MIT
+---
+
+## How it works
+
+- The page loads jQuery first, then the local ndt7 bundle (ndt7.min.js), then script.js.
+- The app waits until `window.jQuery` and `window.ndt7` are available before enabling the Start button.
+- When started, the app runs ndt7 tests (download then upload) using the ndt7 JavaScript client and displays:
+  - Download throughput (Mbps)
+  - Upload throughput (Mbps)
+  - Available latency metrics (ms)
+  - Log/status messages
+
+Why local bundles?
+- The ndt7 bundle used here requires jQuery. Bundling both jQuery and ndt7 locally avoids CDN path breakages and network/CDN blocking that previously caused "ndt7 is not defined" and 404 errors when trying to load the library from remote CDNs.
+
+---
+
+## Quick start (local edit & push)
+
+1. Clone the repo (or work in your local copy where files already exist):
+   - git clone https://github.com/patchu-madathil/networkperformancetest.git
+   - cd networkperformancetest
+
+2. (Optional) If you do not have the local files `jquery.min.js` or `ndt7.min.js` in the repo, you can add them:
+   - Download jQuery (example):
+     - curl -sSf -o jquery.min.js https://code.jquery.com/jquery-3.6.0.min.js
+   - Download ndt7 bundle (example from unpkg):
+     - curl -sSf -o ndt7.min.js https://unpkg.com/@m-lab/ndt7/dist/ndt7.min.js
+   - Commit and push:
+     - git add jquery.min.js ndt7.min.js
+     - git commit -m "Add local jquery and ndt7 bundles"
+     - git push origin main
+
+3. Commit any UI changes and push to GitHub:
+   - git add .
+   - git commit -m "Update site"
+   - git push origin main
+
+4. Publish with GitHub Pages:
+   - Option A (Pages from main root): In the repository → Settings → Pages, set Source to branch `main`, folder `/ (root)` and save.
+   - Option B (Automatic gh-pages): If you use the included GitHub Actions workflow, it will deploy the root to the `gh-pages` branch on push to `main`. If you use that workflow, set Pages to serve from the `gh-pages` branch after the first successful run.
+
+Published URL:
+- If the repo is under `patchu-madathil`, the Pages URL will be:
+  - `https://patchu-madathil.github.io/networkperformancetest/`
+
+---
+
+## Usage
+
+- Open the published Pages URL in a modern browser (Chrome/Firefox/Edge).
+- Click "Start Test" — the UI will show server selection, download/upload throughput updates, and latency if available.
+- Use DevTools → Console / Network for troubleshooting (check that jquery.min.js and ndt7.min.js load with HTTP 200).
+
+---
+
+## Troubleshooting
+
+- "ndt7 is not defined" — ensure `ndt7.min.js` is present in the repo root (or the correct path) and that `jquery.min.js` is loaded first.
+- 404 for script files — verify Pages is serving the branch you pushed to (main or gh-pages) and that the files exist in that branch at the expected paths.
+- CDN 404s — prefer the local copies included in this repo to eliminate reliance on upstream CDNs.
+- If tests cannot discover a server or return empty URLs:
+  - Inspect `serverChosen` and measurement callbacks in DevTools console (the app logs the raw objects).
+  - Try a different network if your current network blocks WebSocket/CORS connections to M-Lab servers.
+
+---
+
+## Notes
+
+- The ndt7 bundle included here was taken from the published package and expects jQuery. If you prefer a ndt7 build that does not require jQuery, obtain or build a version without that dependency and replace `ndt7.min.js`.
+- If you later prefer to use a CDN for either jQuery or ndt7, update `index.html` to reference the desired CDN URLs and ensure CORS/HTTPS compatibility.
+
+---
+
+## License
+
+MIT
+
 ```
