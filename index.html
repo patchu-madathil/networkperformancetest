@@ -37,48 +37,61 @@
       <div class="card"><h3>Status / Log</h3><pre id="log" class="log">Waiting for ndt library...</pre></div>
     </section>
 
-    <p class="note">This page uses a local ndt bundle (ndt.min.js). If you move the file, update the script src accordingly.</p>
+    <p class="note">This page uses a local ndt bundle (ndt7/minified) and jQuery loaded locally or from CDN. If you move the files, update the script srcs accordingly.</p>
   </main>
 
-  <!-- Load local bundle (make sure the filename and path match exactly) -->
-  <script src="ndt7.min.js"></script>
+  <!-- Load jQuery BEFORE the ndt7 bundle -->
+  <!-- Option A: load from CDN (fastest to test) -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"
+          integrity="sha256-/xUj+3OJ+Yk6kXc1q5H2fJb0Q5p4b6Yv1Kp3uXh8+Yw="
+          crossorigin="anonymous"></script>
 
-  <!-- Small readiness helper: enable Start only once ndt7 is available -->
+  <!-- Option B (recommended for GitHub Pages reliability): commit jquery.min.js to repo and use:
+       <script src="jquery.min.js"></script>
+       If you use local file, remove the CDN line above. -->
+
+  <!-- Load your local ndt bundle (must come after jQuery) -->
+  <script src="ndt7.min.js"></script>
+  <!-- If your file is named ndt.min.js or ndt7.min.js, update the filename here accordingly. -->
+
+  <!-- small readiness helper (ensures both jQuery and ndt7 are available) -->
   <script>
-    (function waitForNdtLocal() {
+    (function readyCheck() {
       const startBtn = document.getElementById('startBtn');
       const logEl = document.getElementById('log');
-
-      function appendLog(msg) {
+      function appendLog(msg){
         const t = new Date().toISOString().substr(11,8);
         logEl.textContent = `[${t}] ${msg}\n` + logEl.textContent;
       }
-
-      if (window.ndt7) {
-        appendLog('ndt7 loaded from local ndt.min.js');
-        startBtn.disabled = false;
-        return;
+      if (typeof window.jQuery === 'undefined') {
+        appendLog('Warning: jQuery not found. Check script order or add jquery.min.js locally.');
+      } else {
+        appendLog('jQuery loaded, version: ' + (window.jQuery.fn && window.jQuery.fn.jquery));
       }
-
-      appendLog('ndt7 not yet available; polling for local library...');
-      let tries = 0;
-      const iv = setInterval(() => {
-        tries++;
-        if (window.ndt7) {
-          clearInterval(iv);
-          appendLog('ndt7 is now available');
-          startBtn.disabled = false;
-          return;
-        }
-        if (tries > 40) { // ~6 seconds of polling
-          clearInterval(iv);
-          appendLog('ndt7 did not become available. Check that ndt.min.js is present and exposes window.ndt7.');
-        }
-      }, 150);
+      if (window.ndt7) {
+        appendLog('ndt7 loaded.');
+        startBtn.disabled = false;
+      } else {
+        appendLog('ndt7 not yet loaded; polling...');
+        let tries = 0;
+        const iv = setInterval(() => {
+          tries++;
+          if (window.ndt7) {
+            clearInterval(iv);
+            appendLog('ndt7 available.');
+            startBtn.disabled = false;
+            return;
+          }
+          if (tries > 40) {
+            clearInterval(iv);
+            appendLog('ndt7 failed to appear: confirm ndt7 bundle exposes window.ndt7 and file path is correct.');
+          }
+        }, 150);
+      }
     })();
   </script>
 
-  <!-- Your app script that uses window.ndt7 (must come after ndt.min.js) -->
+  <!-- App script (uses window.ndt7) -->
   <script src="script.js"></script>
 </body>
 </html>
