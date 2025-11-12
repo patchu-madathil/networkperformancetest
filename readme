@@ -1,0 +1,35 @@
+```markdown
+# networkperformancetest
+
+Simple static web page that runs M-Lab's ndt7 upload and download speed tests from the browser and reports throughput and latency.
+
+How it works
+- Uses the ndt7 client from CDN: `https://cdn.jsdelivr.net/npm/@m-lab/ndt7/dist/ndt7.min.js`
+- The page calls `ndt7.test(...)` and listens for download and upload measurement callbacks to show Mbps and latency (when present).
+
+Publish to GitHub Pages
+1. Create a repository named `networkperformancetest` under your GitHub account `patchu-madathil`.
+2. Push these files to the repo's main branch.
+3. In the repository Settings → Pages, set the source to `main` branch and folder `/ (root)`.
+4. After a minute, your site will be available at:
+   `https://patchu-madathil.github.io/networkperformancetest/`
+
+Quick git commands (run from the folder with the files):
+- git init
+- git add .
+- git commit -m "Initial networkperformancetest site (ndt7)"
+- git branch -M main
+- git remote add origin https://github.com/patchu-madathil/networkperformancetest.git
+- git push -u origin main
+
+Optional: automatic deploy to gh-pages using GitHub Actions
+- I included a workflow that will publish the repository contents to the gh-pages branch on push to main.
+- If you prefer Pages from the gh-pages branch, set Pages to serve from `gh-pages` branch in repository settings (the workflow will create that branch when it runs).
+
+Notes and troubleshooting
+- Some browsers or networks can block WebSocket connections or cross-origin connections required by ndt7; if tests fail, try another browser or network.
+- The library may show a small consent dialog; the code sets `userAcceptedDataPolicy: true` to minimize prompts.
+- Latency fields vary by server; the script tries multiple common fields and will show "N/A" if none are present.
+
+License: MIT
+```
