@@ -4,7 +4,17 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Network Performance Test (ndt7)</title>
-  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin: 0; padding: 1rem; background: #f6f8fa; color: #0b1220; }
+    main { max-width: 900px; margin: 0 auto; }
+    h1 { margin: 0 0 1rem 0; }
+    .card { background: white; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 4px rgba(12,20,30,0.06); }
+    #controls { margin-bottom: 1rem; }
+    #controls button { padding: 0.5rem 1rem; margin-right: 0.5rem; font-weight: 600; border-radius: 6px; border: 1px solid #dfe6ee; background: #ffffff; cursor: pointer; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    .log { max-height: 160px; overflow: auto; background: #0b1220; color: #cfe9ff; padding: 0.5rem; border-radius: 6px; font-size: 0.9rem; }
+    .note { margin-top: 1rem; color: #586069; }
+  </style>
 </head>
 <body>
   <main>
@@ -15,90 +25,60 @@
       <button id="stopBtn" disabled>Stop</button>
     </div>
 
-    <section id="serverSection" class="card">
+    <section class="card">
       <h2>Server</h2>
       <div id="server">Not selected</div>
     </section>
 
-    <section id="results" class="grid">
-      <div class="card">
-        <h3>Download</h3>
-        <div id="download">—</div>
-      </div>
-      <div class="card">
-        <h3>Upload</h3>
-        <div id="upload">—</div>
-      </div>
-      <div class="card">
-        <h3>Latency</h3>
-        <div id="latency">—</div>
-      </div>
-      <div class="card">
-        <h3>Status / Log</h3>
-        <pre id="log" class="log">Waiting for ndt7 library...</pre>
-      </div>
+    <section class="grid" style="margin-top:1rem">
+      <div class="card"><h3>Download</h3><div id="download">—</div></div>
+      <div class="card"><h3>Upload</h3><div id="upload">—</div></div>
+      <div class="card"><h3>Latency</h3><div id="latency">—</div></div>
+      <div class="card"><h3>Status / Log</h3><pre id="log" class="log">Waiting for ndt library...</pre></div>
     </section>
 
-    <p class="note">This page uses M-Lab's ndt7 client via CDN. If ndt7 fails to load, check the browser console and the Network tab.</p>
-
-    <footer>
-      <small>Built with ndt7-js (M-Lab). Source: <a href="https://github.com/m-lab/ndt7-js" target="_blank" rel="noopener">m-lab/ndt7-js</a></small>
-    </footer>
+    <p class="note">This page uses a local ndt bundle (ndt.min.js). If you move the file, update the script src accordingly.</p>
   </main>
 
-  <!-- Attempt to load ndt7 library from CDN (primary include) -->
-  <script src="https://cdn.jsdelivr.net/npm/@m-lab/ndt7/dist/ndt7.min.js"></script>
+  <!-- Load local bundle (make sure the filename and path match exactly) -->
+  <script src="ndt7.min.js"></script>
 
-  <!-- Fallback loader + readiness notifier -->
+  <!-- Small readiness helper: enable Start only once ndt7 is available -->
   <script>
-    // Try to ensure ndt7 is available and notify the app
-    (function() {
+    (function waitForNdtLocal() {
       const startBtn = document.getElementById('startBtn');
       const logEl = document.getElementById('log');
 
-      function setLog(msg) {
-        const time = new Date().toISOString().substr(11,8);
-        logEl.textContent = `[${time}] ${msg}\n` + logEl.textContent;
+      function appendLog(msg) {
+        const t = new Date().toISOString().substr(11,8);
+        logEl.textContent = `[${t}] ${msg}\n` + logEl.textContent;
       }
 
-      // If ndt7 already present, enable start
       if (window.ndt7) {
-        setLog('ndt7 library loaded (cdn).');
+        appendLog('ndt7 loaded from local ndt.min.js');
         startBtn.disabled = false;
         return;
       }
 
-      // Otherwise, try to load dynamically and poll for window.ndt7
-      setLog('ndt7 not found—attempting dynamic load...');
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/@m-lab/ndt7/dist/ndt7.min.js';
-      s.crossOrigin = 'anonymous';
-      s.onload = () => {
-        setLog('ndt7 loaded via dynamic script.');
-        startBtn.disabled = false;
-      };
-      s.onerror = () => {
-        setLog('Failed to load ndt7 from CDN. You can try another CDN or verify network access.');
-        // still poll for a short while in case of delayed load
-        let tries = 0;
-        const poll = setInterval(() => {
-          tries++;
-          if (window.ndt7) {
-            clearInterval(poll);
-            setLog('ndt7 became available.');
-            startBtn.disabled = false;
-            return;
-          }
-          if (tries > 30) { // ~6 seconds
-            clearInterval(poll);
-            setLog('ndt7 not available after retries.');
-          }
-        }, 200);
-      };
-      document.head.appendChild(s);
+      appendLog('ndt7 not yet available; polling for local library...');
+      let tries = 0;
+      const iv = setInterval(() => {
+        tries++;
+        if (window.ndt7) {
+          clearInterval(iv);
+          appendLog('ndt7 is now available');
+          startBtn.disabled = false;
+          return;
+        }
+        if (tries > 40) { // ~6 seconds of polling
+          clearInterval(iv);
+          appendLog('ndt7 did not become available. Check that ndt.min.js is present and exposes window.ndt7.');
+        }
+      }, 150);
     })();
   </script>
 
+  <!-- Your app script that uses window.ndt7 (must come after ndt.min.js) -->
   <script src="script.js"></script>
 </body>
 </html>
