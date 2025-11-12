@@ -4,7 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Network Performance Test (ndt7)</title>
+  <link rel="stylesheet" href="style.css" />
   <style>
+    /* Minimal fallback styling in case style.css isn't present */
     body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin: 0; padding: 1rem; background: #f6f8fa; color: #0b1220; }
     main { max-width: 900px; margin: 0 auto; }
     h1 { margin: 0 0 1rem 0; }
@@ -12,8 +14,9 @@
     #controls { margin-bottom: 1rem; }
     #controls button { padding: 0.5rem 1rem; margin-right: 0.5rem; font-weight: 600; border-radius: 6px; border: 1px solid #dfe6ee; background: #ffffff; cursor: pointer; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
-    .log { max-height: 160px; overflow: auto; background: #0b1220; color: #cfe9ff; padding: 0.5rem; border-radius: 6px; font-size: 0.9rem; }
+    .log { max-height: 180px; overflow: auto; background: #0b1220; color: #cfe9ff; padding: 0.5rem; border-radius: 6px; font-size: 0.9rem; }
     .note { margin-top: 1rem; color: #586069; }
+    footer { margin-top: 1.5rem; color: #687089; }
   </style>
 </head>
 <body>
@@ -34,63 +37,79 @@
       <div class="card"><h3>Download</h3><div id="download">—</div></div>
       <div class="card"><h3>Upload</h3><div id="upload">—</div></div>
       <div class="card"><h3>Latency</h3><div id="latency">—</div></div>
-      <div class="card"><h3>Status / Log</h3><pre id="log" class="log">Waiting for ndt library...</pre></div>
+      <div class="card"><h3>Status / Log</h3><pre id="log" class="log">Waiting for libraries...</pre></div>
     </section>
 
-    <p class="note">This page uses a local ndt bundle (ndt7/minified) and jQuery loaded locally or from CDN. If you move the files, update the script srcs accordingly.</p>
+    <p class="note">This page expects local copies of: <code>jquery.min.js</code>, <code>skel.min.js</code>, and <code>ndt7.min.js</code> at the repo root. If you store them in a subfolder, update the <code>&lt;script&gt;</code> src paths accordingly.</p>
+
+    <footer>
+      <small>Built with ndt7-js (M-Lab). Local dependencies: jQuery, Skel, ndt7.</small>
+    </footer>
   </main>
 
-  <!-- Load jQuery BEFORE the ndt7 bundle -->
-  <!-- Option A: load from CDN (fastest to test) -->
-
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-
-  <!-- Option B (recommended for GitHub Pages reliability): commit jquery.min.js to repo and use:
-       <script src="jquery.min.js"></script>
-       If you use local file, remove the CDN line above. -->
-
-  <!-- Load your local ndt bundle (must come after jQuery) -->
+  <!-- Load local dependencies in required order -->
+  <script src="jquery.min.js"></script>
+  <!-- skel next (pinned version) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/skel/0.4.2/skel.min.js" crossorigin="anonymous"></script>
   <script src="ndt7.min.js"></script>
-  <!-- If your file is named ndt.min.js or ndt7.min.js, update the filename here accordingly. -->
 
-  <!-- small readiness helper (ensures both jQuery and ndt7 are available) -->
+  <!-- Readiness checker: enable start only when all globals are present -->
   <script>
-    (function readyCheck() {
+    (function readiness() {
       const startBtn = document.getElementById('startBtn');
+      const stopBtn = document.getElementById('stopBtn');
       const logEl = document.getElementById('log');
-      function appendLog(msg){
+
+      function appendLog(msg) {
         const t = new Date().toISOString().substr(11,8);
         logEl.textContent = `[${t}] ${msg}\n` + logEl.textContent;
       }
-      if (typeof window.jQuery === 'undefined') {
-        appendLog('Warning: jQuery not found. Check script order or add jquery.min.js locally.');
-      } else {
-        appendLog('jQuery loaded, version: ' + (window.jQuery.fn && window.jQuery.fn.jquery));
+
+      appendLog('Checking required globals: jQuery, skel, ndt7...');
+
+      function checkAll() {
+        const haveJQ = typeof window.jQuery !== 'undefined';
+        const haveSkel = typeof window.skel !== 'undefined';
+        const haveNdt7 = typeof window.ndt7 !== 'undefined';
+        appendLog(`jQuery: ${haveJQ}, skel: ${haveSkel}, ndt7: ${haveNdt7}`);
+        if (haveJQ && haveSkel && haveNdt7) {
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+          appendLog('All libraries loaded. Start button enabled.');
+          // expose quick debug info
+          try {
+            appendLog('jQuery version: ' + (window.jQuery && window.jQuery.fn && window.jQuery.fn.jquery));
+          } catch (e) {}
+          try {
+            // some skel builds may not expose a version; just log existence
+            appendLog('skel detected');
+          } catch (e) {}
+          try {
+            appendLog('ndt7 object: ' + (window.ndt7 && (window.ndt7.VERSION || 'object')));
+          } catch (e) {}
+          return true;
+        }
+        return false;
       }
-      if (window.ndt7) {
-        appendLog('ndt7 loaded.');
-        startBtn.disabled = false;
-      } else {
-        appendLog('ndt7 not yet loaded; polling...');
-        let tries = 0;
-        const iv = setInterval(() => {
-          tries++;
-          if (window.ndt7) {
-            clearInterval(iv);
-            appendLog('ndt7 available.');
-            startBtn.disabled = false;
-            return;
-          }
-          if (tries > 40) {
-            clearInterval(iv);
-            appendLog('ndt7 failed to appear: confirm ndt7 bundle exposes window.ndt7 and file path is correct.');
-          }
-        }, 150);
-      }
+
+      if (checkAll()) return;
+
+      let tries = 0;
+      const iv = setInterval(() => {
+        tries++;
+        if (checkAll()) {
+          clearInterval(iv);
+          return;
+        }
+        if (tries > 60) { // ~9 seconds
+          clearInterval(iv);
+          appendLog('Not all libraries appeared. Verify that jquery.min.js, skel.min.js and ndt7.min.js are present and expose the expected globals.');
+        }
+      }, 150);
     })();
   </script>
 
-  <!-- App script (uses window.ndt7) -->
+  <!-- App script (must run after libs) -->
   <script src="script.js"></script>
 </body>
 </html>
