@@ -1,5 +1,5 @@
 // script.js - runs ndt7 test and updates the UI
-// Requires ndt7 to be loaded globally (from CDN) as in index.html
+// This script waits for window.ndt7 to be available before attempting to use it.
 
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
@@ -26,37 +26,24 @@ function formatMs(value) {
   return `${Number(value).toFixed(1)} ms`;
 }
 
-// try to extract throughput (Mbps) from an ndt7 measurement message
 function extractMbpsFromData(data) {
   if (!data || !data.Data) return null;
-
   const d = data.Data;
-
-  // Common: MeanClientMbps or MeanServerMbps
   if (typeof d.MeanClientMbps === 'number') return d.MeanClientMbps;
   if (typeof d.MeanServerMbps === 'number') return d.MeanServerMbps;
-
-  // TCPInfo: compute via BytesSent/ElapsedTime or BytesReceived/ElapsedTime
   if (d.TCPInfo) {
     const t = d.TCPInfo;
     if (typeof t.ElapsedTime === 'number' && t.ElapsedTime > 0) {
-      if (typeof t.BytesSent === 'number') {
-        return (t.BytesSent * 8) / (t.ElapsedTime * 1e6); // Mbps
-      }
-      if (typeof t.BytesReceived === 'number') {
-        return (t.BytesReceived * 8) / (t.ElapsedTime * 1e6); // Mbps
-      }
+      if (typeof t.BytesSent === 'number') return (t.BytesSent * 8) / (t.ElapsedTime * 1e6);
+      if (typeof t.BytesReceived === 'number') return (t.BytesReceived * 8) / (t.ElapsedTime * 1e6);
     }
   }
-
   return null;
 }
 
-// try to extract RTT/latency (ms) from message data
 function extractLatencyFromData(data) {
   if (!data || !data.Data) return null;
   const d = data.Data;
-
   if (typeof d.MinRTTMs === 'number') return d.MinRTTMs;
   if (typeof d.MinRTT === 'number') return d.MinRTT;
   if (typeof d.Latency === 'number') return d.Latency;
@@ -77,11 +64,39 @@ function resetUI() {
   logEl.textContent = 'Idle';
 }
 
+// Helper that waits for ndt7 for up to timeoutMs
+function waitForNdt7(timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    if (window.ndt7) return resolve(window.ndt7);
+    const start = Date.now();
+    const iv = setInterval(() => {
+      if (window.ndt7) {
+        clearInterval(iv);
+        return resolve(window.ndt7);
+      }
+      if (Date.now() - start > timeoutMs) {
+        clearInterval(iv);
+        return reject(new Error('ndt7 library not available'));
+      }
+    }, 150);
+  });
+}
+
 startBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
   stopBtn.disabled = false;
   resetUI();
   log('Starting ndt7 test...');
+
+  try {
+    // ensure ndt7 is available
+    await waitForNdt7(10000);
+  } catch (err) {
+    log('ndt7 library did not load: ' + err.message);
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    return;
+  }
 
   try {
     const config = {
@@ -133,7 +148,8 @@ startBtn.addEventListener('click', async () => {
       }
     };
 
-    currentTest = ndt7.test(config, callbacks);
+    // run test using the globally loaded ndt7
+    currentTest = window.ndt7.test(config, callbacks);
     const exitCode = await currentTest;
     log(`ndt7 test completed with exit code ${exitCode}`);
   } catch (err) {
