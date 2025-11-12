@@ -4,61 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Network Performance Test (ndt7)</title>
-  <style>
-    body {
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      margin: 0;
-      padding: 1rem;
-      background: #f6f8fa;
-      color: #0b1220;
-    }
-    main {
-      max-width: 900px;
-      margin: 0 auto;
-    }
-    h1 { margin: 0 0 1rem 0; }
-    .card {
-      background: white;
-      border-radius: 8px;
-      padding: 1rem;
-      box-shadow: 0 1px 4px rgba(12,20,30,0.06);
-    }
-    #controls { margin-bottom: 1rem; }
-    #controls button {
-      padding: 0.5rem 1rem;
-      margin-right: 0.5rem;
-      font-weight: 600;
-      border-radius: 6px;
-      border: 1px solid #dfe6ee;
-      background: #ffffff;
-      cursor: pointer;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1rem;
-    }
-    #serverSection { margin-bottom: 1rem; }
-    #server, #download, #upload, #latency { font-size: 1.1rem; font-weight: 600; }
-    .log {
-      max-height: 160px;
-      overflow: auto;
-      background: #0b1220;
-      color: #cfe9ff;
-      padding: 0.5rem;
-      border-radius: 6px;
-      font-size: 0.9rem;
-    }
-    .note { margin-top: 1rem; color: #586069; }
-    footer { margin-top: 1.5rem; color: #687089; }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main>
     <h1>Network Performance Test (ndt7)</h1>
 
     <div id="controls">
-      <button id="startBtn">Start Test</button>
+      <button id="startBtn" disabled>Start Test</button>
       <button id="stopBtn" disabled>Stop</button>
     </div>
 
@@ -82,158 +35,70 @@
       </div>
       <div class="card">
         <h3>Status / Log</h3>
-        <pre id="log" class="log">Idle</pre>
+        <pre id="log" class="log">Waiting for ndt7 library...</pre>
       </div>
     </section>
 
-    <p class="note">This page uses M-Lab's ndt7 client via CDN. You may need to accept the data policy prompt.</p>
+    <p class="note">This page uses M-Lab's ndt7 client via CDN. If ndt7 fails to load, check the browser console and the Network tab.</p>
 
     <footer>
       <small>Built with ndt7-js (M-Lab). Source: <a href="https://github.com/m-lab/ndt7-js" target="_blank" rel="noopener">m-lab/ndt7-js</a></small>
     </footer>
   </main>
 
-  <!-- ndt7 CDN -->
+  <!-- Attempt to load ndt7 library from CDN (primary include) -->
   <script src="https://cdn.jsdelivr.net/npm/@m-lab/ndt7/dist/ndt7.min.js"></script>
 
-  <!-- Inlined script (previously in script.js) -->
+  <!-- Fallback loader + readiness notifier -->
   <script>
-    const startBtn = document.getElementById('startBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const serverEl = document.getElementById('server');
-    const downloadEl = document.getElementById('download');
-    const uploadEl = document.getElementById('upload');
-    const latencyEl = document.getElementById('latency');
-    const logEl = document.getElementById('log');
+    // Try to ensure ndt7 is available and notify the app
+    (function() {
+      const startBtn = document.getElementById('startBtn');
+      const logEl = document.getElementById('log');
 
-    let currentTest = null;
-
-    function log(msg) {
-      const time = new Date().toISOString().substr(11, 8);
-      logEl.textContent = `[${time}] ${msg}\n` + logEl.textContent;
-    }
-
-    function formatMbps(value) {
-      if (value === null || value === undefined || Number.isNaN(value)) return 'N/A';
-      return `${Number(value).toFixed(2)} Mb/s`;
-    }
-
-    function formatMs(value) {
-      if (value === null || value === undefined || Number.isNaN(value)) return 'N/A';
-      return `${Number(value).toFixed(1)} ms`;
-    }
-
-    function extractMbpsFromData(data) {
-      if (!data || !data.Data) return null;
-      const d = data.Data;
-      if (typeof d.MeanClientMbps === 'number') return d.MeanClientMbps;
-      if (typeof d.MeanServerMbps === 'number') return d.MeanServerMbps;
-      if (d.TCPInfo) {
-        const t = d.TCPInfo;
-        if (typeof t.ElapsedTime === 'number' && t.ElapsedTime > 0) {
-          if (typeof t.BytesSent === 'number') {
-            return (t.BytesSent * 8) / (t.ElapsedTime * 1e6);
-          }
-          if (typeof t.BytesReceived === 'number') {
-            return (t.BytesReceived * 8) / (t.ElapsedTime * 1e6);
-          }
-        }
+      function setLog(msg) {
+        const time = new Date().toISOString().substr(11,8);
+        logEl.textContent = `[${time}] ${msg}\n` + logEl.textContent;
       }
-      return null;
-    }
 
-    function extractLatencyFromData(data) {
-      if (!data || !data.Data) return null;
-      const d = data.Data;
-      if (typeof d.MinRTTMs === 'number') return d.MinRTTMs;
-      if (typeof d.MinRTT === 'number') return d.MinRTT;
-      if (typeof d.Latency === 'number') return d.Latency;
-      if (d.TCPInfo) {
-        const t = d.TCPInfo;
-        if (typeof t.RTT === 'number') return t.RTT;
-        if (typeof t.rtt === 'number') return t.rtt;
-        if (typeof t.SmoothedRTT === 'number') return t.SmoothedRTT;
-      }
-      return null;
-    }
-
-    function resetUI() {
-      serverEl.textContent = 'Not selected';
-      downloadEl.textContent = '—';
-      uploadEl.textContent = '—';
-      latencyEl.textContent = '—';
-      logEl.textContent = 'Idle';
-    }
-
-    startBtn.addEventListener('click', async () => {
-      startBtn.disabled = true;
-      stopBtn.disabled = false;
-      resetUI();
-      log('Starting ndt7 test...');
-
-      try {
-        const config = {
-          userAcceptedDataPolicy: true,
-          metadata: { client_name: 'networkperformancetest' }
-        };
-
-        const callbacks = {
-          serverChosen: (server) => {
-            const name = server && (server.machine || server.server) ? (server.machine || server.server) : JSON.stringify(server);
-            const location = server && server.location && server.location.city ? ' — ' + server.location.city : '';
-            serverEl.textContent = name + location;
-            log('Server chosen: ' + name + location);
-          },
-          downloadMeasurement: (data) => {
-            const mbps = extractMbpsFromData(data);
-            if (mbps !== null) {
-              downloadEl.textContent = formatMbps(mbps);
-              log('Download update: ' + formatMbps(mbps));
-            }
-            const lat = extractLatencyFromData(data);
-            if (lat !== null) {
-              latencyEl.textContent = formatMs(lat);
-              log('Latency update: ' + formatMs(lat));
-            }
-          },
-          uploadMeasurement: (data) => {
-            const mbps = extractMbpsFromData(data);
-            if (mbps !== null) {
-              uploadEl.textContent = formatMbps(mbps);
-              log('Upload update: ' + formatMbps(mbps));
-            }
-            const lat = extractLatencyFromData(data);
-            if (lat !== null) {
-              latencyEl.textContent = formatMs(lat);
-              log('Latency update: ' + formatMs(lat));
-            }
-          },
-          measurement: (data) => {
-            log('Measurement event: ' + (data && data.Type ? data.Type : 'event'));
-          },
-          error: (err) => {
-            console.error('ndt7 error', err);
-            log('Error: ' + (err && err.message ? err.message : String(err)));
-          }
-        };
-
-        currentTest = ndt7.test(config, callbacks);
-        const exitCode = await currentTest;
-        log('ndt7 test completed with exit code ' + exitCode);
-      } catch (err) {
-        console.error('Test failed', err);
-        log('Test failed: ' + (err && err.message ? err.message : String(err)));
-      } finally {
+      // If ndt7 already present, enable start
+      if (window.ndt7) {
+        setLog('ndt7 library loaded (cdn).');
         startBtn.disabled = false;
-        stopBtn.disabled = true;
+        return;
       }
-    });
 
-    stopBtn.addEventListener('click', () => {
-      log('Stop requested. If the ndt7 client supports cancellation it will stop; otherwise wait for completion.');
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
-    });
+      // Otherwise, try to load dynamically and poll for window.ndt7
+      setLog('ndt7 not found—attempting dynamic load...');
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/@m-lab/ndt7/dist/ndt7.min.js';
+      s.crossOrigin = 'anonymous';
+      s.onload = () => {
+        setLog('ndt7 loaded via dynamic script.');
+        startBtn.disabled = false;
+      };
+      s.onerror = () => {
+        setLog('Failed to load ndt7 from CDN. You can try another CDN or verify network access.');
+        // still poll for a short while in case of delayed load
+        let tries = 0;
+        const poll = setInterval(() => {
+          tries++;
+          if (window.ndt7) {
+            clearInterval(poll);
+            setLog('ndt7 became available.');
+            startBtn.disabled = false;
+            return;
+          }
+          if (tries > 30) { // ~6 seconds
+            clearInterval(poll);
+            setLog('ndt7 not available after retries.');
+          }
+        }, 200);
+      };
+      document.head.appendChild(s);
+    })();
   </script>
+
+  <script src="script.js"></script>
 </body>
 </html>
